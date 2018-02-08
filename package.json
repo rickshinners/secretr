@@ -1,0 +1,32 @@
+{
+  "name": "secretr",
+  "version": "0.1.0",
+  "description": "A command line tool to retrieve secrets",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://vbustash.vistaprint.net/scm/prod/secretr.git"
+  },
+  "keywords": [
+    "secret-server",
+    "secret",
+    "retrieval"
+  ],
+  "author": "Strandbeest@cimpress.com",
+  "license": "Apache-2.0",
+  "bin": {
+    "secretr": "./index.js"
+  },
+  "dependencies": {
+    "@mr.xcray/thycotic-secretserver-client": "2.1.2",
+    "chalk": "^2.3.0",
+    "co": "^4.6.0",
+    "co-prompt": "^1.0.0",
+    "commander": "^2.14.1",
+    "jmespath": "^0.15.0",
+    "lodash": "^4.17.5"
+  }
+}
