@@ -7,23 +7,26 @@ var chalk = require('chalk');
 var secretserver = require('@mr.xcray/thycotic-secretserver-client');
 var _ = require('lodash');
 var jmespath = require('jmespath');
+var Promise = require('bluebird');
 
-let secret_id = null;
 program
-  .arguments('<secret-id>')
-  .option('-u, --username [username]', 'Username with which to authenticate against secret server')
+  .arguments('<secret-id> [secret-id ...]')
+  .version('0.1.0', '-v, --version')
+  .option('-u, --username <username>', 'Username with which to authenticate against secret server')
   .option('-p, --password <password>', 'Password with which to authenticate against secret server')
   .option('-w, --wsdl <wsdl-url>', 'URL to the secret server WSDL')
   .option('-a, --attachment-name <attachment-name>', 'Name of the attachment field to download.  This will only retrieve the attachment and not the entire secret')
   .option('-f, --filter <filter>', 'Filter the JSON output using a JMESPath filter')
   .option('--pretty', 'Pretty print JSON output')
   .option('--raw', 'output raw object, useful in conjunction with the --filter option')
-  .option('-s,--simple', 'Output a simplified version of the secret')
-  .action(function(arg) {
-    secret_id = parseInt(arg);
-  });
+  .option('-s,--simple', 'Output a simplified version of the secret');
 
 program.parse(process.argv);
+
+const secretIds = [];
+program.args.forEach( secretId => {
+  secretIds.push(secretId);
+})
 
 let username = program.username || process.env.SECRETR_USERNAME;
 let password = program.password || process.env.SECRETR_PASSWORD;
@@ -60,22 +63,35 @@ function convertItemsDictionaryToArray(result) {
   return result;
 }
 
+const returnObject = { Secrets: [] };
 const client = new secretserver(wsdl, username, password, organization='', domain='vistaprintus');
-client.GetSecret(secret_id)
-  .then( result => {
-    result = convertItemsDictionaryToArray(result);
-    if(program.simple){
-      result = simplifyResult(result);
-    }
-    if(program.filter) {
-      emitOutput(jmespath.search(result, program.filter));
-    } else {
-      emitOutput(result);
-    }
-  })
-  .catch( err => {
-    console.log(chalk.red(err));
+
+Promise.map(secretIds, (secretId) => {
+  return client.GetSecret(secretId)
+    .then( secret => {
+      secret = convertItemsDictionaryToArray(secret);
+      if(program.simple) {
+        secret = simplifyResult(secret);
+      }
+      secret.RetrievalStatus = 'Ok';
+      return secret;
+    })
+    .catch( err => {
+      console.error(chalk.red('Error retrieving secret ' + secretId + ': ' + err));
+      return { Id: secretId, Error: err, RetrievalStatus: 'Error' };
+    });
+}).then((results) => {
+  results.forEach( result => {
+    returnObject.Secrets.push(result);
   });
+  if(program.filter) {
+    emitOutput(jmespath.search(returnObject, program.filter));
+  } else {
+    emitOutput(returnObject);
+  }
+}).catch( (err) => {
+  console.error(chalk.red('Unhandled error retrieving secrets: ' + err));
+});
 
 /*
   Usage examples:
