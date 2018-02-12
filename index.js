@@ -1,11 +1,8 @@
 #!/usr/bin/env node
 
 var program = require('commander');
-var co = require('co');
-var prompt = require('co-prompt');
 var chalk = require('chalk');
 var secretserver = require('@mr.xcray/thycotic-secretserver-client');
-var _ = require('lodash');
 var jmespath = require('jmespath');
 var Promise = require('bluebird');
 var readlineSync = require('readline-sync');
