@@ -28,6 +28,7 @@
     "co-prompt": "^1.0.0",
     "commander": "^2.14.1",
     "jmespath": "^0.15.0",
-    "lodash": "^4.17.5"
+    "lodash": "^4.17.5",
+    "readline-sync": "^1.4.8"
   }
 }

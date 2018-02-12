@@ -8,6 +8,7 @@ var secretserver = require('@mr.xcray/thycotic-secretserver-client');
 var _ = require('lodash');
 var jmespath = require('jmespath');
 var Promise = require('bluebird');
+var readlineSync = require('readline-sync');
 
 program
   .arguments('<secret-id> [secret-id ...]')
@@ -28,8 +29,8 @@ program.args.forEach( secretId => {
   secretIds.push(secretId);
 })
 
-let username = program.username || process.env.SECRETR_USERNAME;
-let password = program.password || process.env.SECRETR_PASSWORD;
+let username = program.username || process.env.SECRETR_USERNAME || readlineSync.question('username: ');
+let password = program.password || process.env.SECRETR_PASSWORD || readlineSync.question('password: ', {hideEchoBack: true});
 let wsdl = program.wsdl || process.env.SECRETR_WSDL;
 
 function emitOutput(data) {
