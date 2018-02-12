@@ -32,6 +32,8 @@ program.args.forEach( secretId => {
 let username = program.username || process.env.SECRETR_USERNAME || readlineSync.question('username: ');
 let password = program.password || process.env.SECRETR_PASSWORD || readlineSync.question('password: ', {hideEchoBack: true});
 let wsdl = program.wsdl || process.env.SECRETR_WSDL;
+// @mr.xcray/thycotic-secretserver-client does some weird stuff to the input WSDL so we need to make sure things are capitalized correctly
+wsdl = wsdl.replace(/sswebservice.asmx\?wsdl/i,'SSWebService.asmx?WSDL');
 
 function emitOutput(data) {
   if (program.raw){
