@@ -9,20 +9,53 @@ var readlineSync = require('readline-sync');
 var yaml = require('js-yaml');
 var fs = require('fs');
 var path = require('path');
+var _ = require('lodash');
+
+// program
+//   .arguments('<secret-id> [secret-id ...]')
+//   .version('0.1.0', '-v, --version')
+//   .option('-u, --username <username>', 'Username with which to authenticate against secret server')
+//   .option('-p, --password <password>', 'Password with which to authenticate against secret server')
+//   .option('-w, --wsdl <wsdl-url>', 'URL to the secret server WSDL')
+//   .option('-c, --config <config-file>', 'Specify a config file to load')
+//   .option('-f, --filter <filter>', 'Filter the JSON output using a JMESPath filter')
+//   .option('--pretty', 'Pretty print JSON output')
+//   .option('--raw', 'output raw object, useful in conjunction with the --filter option')
+//   .option('-s,--simple', 'Output a simplified version of the secret');
 
 program
-  .arguments('<secret-id> [secret-id ...]')
   .version('0.1.0', '-v, --version')
-  .option('-u, --username <username>', 'Username with which to authenticate against secret server')
-  .option('-p, --password <password>', 'Password with which to authenticate against secret server')
-  .option('-w, --wsdl <wsdl-url>', 'URL to the secret server WSDL')
-  .option('-c, --config <config-file>', 'Specify a config file to load')
+  .option('-u, --username <username>', 'Username with which to authenticate against secret server.  This can also be supplied via the environment variable SECRETR_USERNAME. If not supplied the user will be prompted.')
+  .option('-p, --password <password>', 'Password with which to authenticate against secret server.  This can also be supplied via the environment variable SECRETR_PASSWORD. If not supplied the user will be prompted.')
+  .option('-w, --wsdl <wsdl-url>', 'URL to the secret server WSDL.  This can also be supplied via the environment variable SECRETR_WSDL. If not supplied the user will be prompted.');
+
+program.command('get')
+  .arguments('<secret-id> [secret-id...]')
   .option('-f, --filter <filter>', 'Filter the JSON output using a JMESPath filter')
   .option('--pretty', 'Pretty print JSON output')
   .option('--raw', 'output raw object, useful in conjunction with the --filter option')
-  .option('-s,--simple', 'Output a simplified version of the secret');
+  .option('-s,--simple', 'Output a simplified version of the secret')
+  .action(function(firstSecretId, optionalSecretIds, cmd){
+    loadGlobals();
+    let secretIds = _.concat(firstSecretId, optionalSecretIds);
+    console.log('username: %s', program.username);
+  });
 
 program.parse(process.argv);
+
+function loadGlobals(){
+  program.username = program.username || process.env.SECRETR_USERNAME || readlineSync.question('username: ');
+  program.password = program.password || process.env.SECRETR_PASSWORD || readlineSync.question('password: ', {hideEchoBack: true});
+  program.wsdl = program.wsdl || process.env.SECRETR_WSDL || readlineSync.question('wsdl: ');
+  if( program.wsdl == undefined){
+    console.error(chalk.red("WSDL is not defined.  Please specify a WSDL.  See --help for more details"));
+    process.exit(1);
+  }
+  // @mr.xcray/thycotic-secretserver-client does some weird stuff to the input WSDL so we need to make sure things are capitalized correctly
+  program.wsdl = program.wsdl.replace(/sswebservice.asmx\?wsdl/i,'SSWebService.asmx?WSDL');
+}
+
+process.exit(0);
 
 const secretIds = [];
 program.args.forEach( secretId => {
@@ -35,7 +68,11 @@ if (program.config){
 
 let username = program.username || process.env.SECRETR_USERNAME || readlineSync.question('username: ');
 let password = program.password || process.env.SECRETR_PASSWORD || readlineSync.question('password: ', {hideEchoBack: true});
-let wsdl = config.wsdl || program.wsdl || process.env.SECRETR_WSDL;
+let wsdl = (config == undefined ? undefined : config.wsdl) || program.wsdl || process.env.SECRETR_WSDL;
+if( wsdl == undefined){
+  console.error(chalk.red("WSDL is not defined.  Please specify a WSDL.  See --help for more details"));
+  process.exit(1);
+}
 // @mr.xcray/thycotic-secretserver-client does some weird stuff to the input WSDL so we need to make sure things are capitalized correctly
 wsdl = wsdl.replace(/sswebservice.asmx\?wsdl/i,'SSWebService.asmx?WSDL');
 
@@ -90,11 +127,14 @@ if(program.config){
           outpath = path.join(config.relpath, configsecret.outfile);
         }
         // console.log('Got secret: %s', secret.Id);
-        fs.writeFile(outpath, json.stringify(secret), (err) => {
+        fs.writeFile(outpath, JSON.stringify(secret), (err) => {
           if(err) {
             console.error(chalk.red('Problem writing secret: %s', err));
           }
         });
+      })
+      .catch( err => {
+        console.error(chalk.red(`Problem getting secret (id: ${configsecret.id}): ${err}`));
       });
   });
 } else {
